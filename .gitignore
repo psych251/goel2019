@@ -1,4 +1,6 @@
 
+original_data/
+
 # Created by https://www.gitignore.io/api/python,jupyternotebooks
 # Edit at https://www.gitignore.io/?templates=python,jupyternotebooks
 
@@ -122,4 +124,3 @@ dmypy.json
 .pyre/
 
 # End of https://www.gitignore.io/api/python,jupyternotebooks
-n
