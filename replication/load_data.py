@@ -20,6 +20,21 @@ def load_data() -> List[User]:
 # %%
 users = load_data()
 
+
+# %%
+all_tasks_data_count = []
+for user in users:
+    for tasks in user.stressed_condition.tasks:
+        all_tasks_data_count += [len(tasks.cursor_entries)]
+    for tasks in user.unstressed_condition.tasks:
+        all_tasks_data_count += [len(tasks.cursor_entries)]
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.distplot(all_tasks_data_count)
+plt.show()
+
 # %%
 stressed_means = []
 unstressed_means = []
