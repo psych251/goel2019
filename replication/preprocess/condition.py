@@ -39,6 +39,21 @@ class TaskMoves(Task):
 
     def populate_cursor_entries(self, move_file: CursorFile):
         self.cursor_entries = self.filter_data_entries(move_file.entries, self.start, self.finish)
+        self.cursor_entries = self.fill_data_entries(self.cursor_entries, 0.008)
+
+    @staticmethod
+    def fill_data_entries(data_entries: List[E], interval: float, threshold: float = 0.05) -> List[E]:
+        new_entries = []
+        for prev_entry, next_entry in zip(data_entries, data_entries[1:] + [None]):
+            new_entries += [prev_entry]
+            if next_entry is not None and next_entry.time - prev_entry.time > interval + threshold:
+                gap = next_entry.time - prev_entry.time
+                count = int(gap // interval)
+                interval_gap = gap / count
+                for i in range(count - 1):
+                    new_entry_time = prev_entry.time + interval_gap * i
+                    new_entries += [DataEntry.interpolate(prev_entry, next_entry, new_entry_time)]
+        return new_entries
 
     @staticmethod
     def track_pad_entries_to_df(entries: List[TrackPadEntry]) -> pandas.DataFrame:
@@ -49,7 +64,7 @@ class TaskMoves(Task):
     @staticmethod
     def cursor_entries_to_df(entries: List[CursorEntry]) -> pandas.DataFrame:
         return pandas.DataFrame([vars(entry) for entry in entries],
-                                columns=["x", "y"])
+                                columns=["time", "x", "y"])
 
     @property
     def track_pad_df(self):
@@ -62,6 +77,11 @@ class TaskMoves(Task):
     def draw_moves(self, axis):
         track_pad_df = self.track_pad_df
         sns.scatterplot(track_pad_df['time'], track_pad_df['x'], ax=axis)
+
+    def draw_cursors(self, axis):
+        cursor_df = self.cursor_df
+        sns.scatterplot(cursor_df['time'], cursor_df['x'], ax=axis)
+        sns.scatterplot(cursor_df['time'], cursor_df['y'], ax=axis)
 
     def __str__(self):
         return str(self.__dict__)

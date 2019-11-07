@@ -31,10 +31,12 @@ class TouchDataset(torch.utils.data.Dataset):
     def cursor_to_list(entries: List[CursorEntry]):
         x = []
         y = []
+        t = []
         for entry in entries:
             x += [entry.x]
             y += [entry.y]
-        return x, y
+            t += [1.0 if entry.valid else 0.0]
+        return x, y, t
 
     def __getitem__(self, index):
         user_id = _bisect.bisect_right(self.valid_user_combinations, index)

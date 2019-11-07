@@ -20,14 +20,14 @@ class LstmNet(nn.Module):
         last_seq_idxs = torch.LongTensor([x - 1 for x in output_sizes])
         last_seq_items = output[range(output.shape[0]), last_seq_idxs, :]
         x = self.mlp7(last_seq_items)
-        x = f.relu(self.mlp7_bn(x))
+        x = self.mlp7_bn(x)
         return x
 
     def forward_single(self, lstm_input: torch.Tensor, hidden: Optional[torch.Tensor])\
             -> Tuple[torch.Tensor, torch.Tensor]:
         lstm_output, hidden_output = self.lstm(lstm_input, hidden)
         x = self.mlp7(lstm_output[0, -1])
-        x = f.relu(self.mlp7_bn(x))
+        # x = self.mlp7_bn(x)
         return x, hidden_output
 
     def forward(self, input, hidden=None):

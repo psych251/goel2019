@@ -16,14 +16,14 @@ class TouchNet(nn.Module):
 
     def forward_seq(self, input: PackedSequence) -> PackedSequence:
         padded_input, input_indexes = pad_packed_sequence(input, batch_first=True)
-        cnn_output = [self.input_network(padded_input[[i]].transpose(1, 2))[0].t() for i in range(padded_input.shape[0])]
+        cnn_output = [self.input_network(padded_input[[i]].transpose(1, 2)[:, :, :input_indexes[i]])[0].t() for i in range(padded_input.shape[0])]
         lstm_input = torch.nn.utils.rnn.pack_sequence(cnn_output, enforce_sorted=False)
         lstm_output = self.lstm_network(lstm_input)  # Throw away output `hidden`
         return lstm_output
 
     def forward_single(self, input: torch.Tensor, hidden: Optional[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         cnn_output = self.input_network(input)
-        lstm_input = cnn_output.view(1, cnn_output.size(0))
+        lstm_input = cnn_output.transpose(1, 2)
         lstm_output, hidden_output = self.lstm_network(lstm_input, hidden)  # Throw away output `hidden`
         return lstm_output[0], hidden_output
 

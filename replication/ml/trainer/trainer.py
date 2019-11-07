@@ -40,7 +40,7 @@ class TouchTrainer:
         self.test_loader = test_loader
         self.max_step = max_step
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(params=model.parameters(), lr=0.0001, weight_decay=1e-2)
+        self.optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001, weight_decay=1e-4)
         self.n_iter = 0
         self.min_avg_loss = math.inf
         self.device = device
@@ -119,6 +119,8 @@ class TouchTrainer:
             save_file_dir = os.path.join(output_parent_dir, resume_from)
             save_file_path = os.path.join(save_file_dir, SAVE_FILE_NAME)
             self.load_from(save_file_path)
+
+        print(self.writer_dir)
 
         self.writer = SummaryWriter(log_dir=self.writer_dir)
         evaluation_done = False
