@@ -1,8 +1,9 @@
 from typing import List
 
+from replication.preprocess.data_entry import DataEntry
 
-class TrackPadEntry:
-    time: float
+
+class TrackPadEntry(DataEntry):
     press: int
     pos: int
     x: float
@@ -13,8 +14,8 @@ class TrackPadEntry:
     minor_axis: float
     contact_area: float
 
-    def __init__(self, time, press, pos, x, y, x_speed, y_speed, major_axis, minor_axis, contact_area):
-        self.time = time
+    def __init__(self, time, press, pos, x, y, x_speed, y_speed, major_axis, minor_axis, contact_area, *args):
+        super().__init__(time)
         self.press = press
         self.pos = pos
         self.x = x

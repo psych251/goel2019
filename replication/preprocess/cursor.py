@@ -1,14 +1,15 @@
 from typing import List
 
+from replication.preprocess.data_entry import DataEntry
 
-class CursorEntry:
-    time: float
+
+class CursorEntry(DataEntry):
     state: int
     x: float
     y: float
 
     def __init__(self, time, state, x, y):
-        self.time = time
+        super().__init__(time)
         self.state = state
         self.x = x
         self.y = y

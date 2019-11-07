@@ -12,7 +12,9 @@ def load_data() -> List[User]:
     user_dir_names = os.listdir(DATA_DIR)
     for dir_name in user_dir_names:
         user_dir = os.path.join(DATA_DIR, dir_name)
-        user_list += [User(user_dir)]
+        user = User(user_dir)
+        user.clean_data()
+        user_list += [user]
     return user_list
 
 
@@ -34,6 +36,12 @@ import matplotlib.pyplot as plt
 
 sns.distplot(all_tasks_data_count)
 plt.show()
+
+#%%
+import pickle
+
+with open("./processed_data/users.pickle", "wb") as user_file:
+    pickle.dump(users, user_file)
 
 # %%
 stressed_means = []
