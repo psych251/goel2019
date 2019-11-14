@@ -78,12 +78,13 @@ class TouchTrainer:
         output_a = output[0: len(input_a)]
         output_b = output[len(input_a): len(input_a) + len(input_b)]
         # reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
+        assert len(input_a) == len(input_b)
         # noinspection PyArgumentList
-        reference = torch.LongTensor([1] * len(input_a) + [0] * len(input_b)).to(self.device)
-        loss = self.criterion(output, reference)
+        reference = torch.LongTensor([[0]] * len(input_a)).to(self.device)
+        aligned_output = torch.stack((output_a, output_b), dim=1)
+        loss = self.criterion(aligned_output, reference)
         # noinspection PyUnresolvedReferences
-        correct_rate = ((output_a[:, 0] > output_a[:, 1]).float().mean() +
-                        (output_b[:, 0] < output_b[:, 1]).float().mean()) / 2
+        correct_rate = (output_a[:] < output_b[:]).float().mean()
         # noinspection PyArgumentList
         return loss, correct_rate
 

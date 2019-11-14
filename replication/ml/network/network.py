@@ -13,7 +13,7 @@ class TouchNet(nn.Module):
         super(TouchNet, self).__init__()
         self.input_network = InputNet(input_dim, middle_dim)
         self.lstm_network = LstmNet(middle_dim, 2)
-        self.linear = nn.Linear(in_features=middle_dim, out_features=2)
+        self.linear = nn.Linear(in_features=middle_dim, out_features=1)
 
     # noinspection PyShadowingBuiltins
     def forward_seq(self, input: List[torch.Tensor]) -> torch.Tensor:
