@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+import math
 from typing import List
 
+from replication.common import SAMPLE_INTERVAL
 from replication.preprocess.data_entry import DataEntry
 
 
@@ -25,6 +29,14 @@ class TrackPadEntry(DataEntry):
         self.major_axis = major_axis
         self.minor_axis = minor_axis
         self.contact_area = contact_area
+
+    def distance(self, other: TrackPadEntry):
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+    def is_close(self, other: TrackPadEntry, tolerance=0):
+        return \
+            super().is_close(other, tolerance) and \
+            self.distance(other) < 3.0  # TODO: check if this assumption is correct
 
     def __str__(self):
         return str(self.__dict__)

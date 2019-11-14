@@ -5,6 +5,7 @@ import torch.utils.data
 from typing import List, Tuple
 
 from replication.preprocess.cursor import CursorEntry
+from replication.preprocess.moves import TrackPadEntry
 from replication.preprocess.user import User
 
 
@@ -38,6 +39,29 @@ class TouchDataset(torch.utils.data.Dataset):
             t += [1.0 if entry.valid else 0.0]
         return x, y, t
 
+    @staticmethod
+    def track_pad_to_list(entries: List[TrackPadEntry]):
+        x = []
+        y = []
+        major = []
+        minor = []
+        area = []
+        valid = []
+        press = []
+        for entry in entries:
+            x += [entry.x]
+            y += [entry.y]
+            valid += [1.0 if entry.valid else 0.0]
+            major += [entry.major_axis]
+            minor += [entry.minor_axis]
+            area += [entry.contact_area]
+            press += [entry.press]
+        return x, y, major, minor, valid, press, area
+
+    @staticmethod
+    def separated_track_pad_to_list(entries_list: List[List[TrackPadEntry]]):
+        return [TouchDataset.track_pad_to_list(entries) for entries in entries_list]
+
     def __getitem__(self, index):
         user_id = _bisect.bisect_right(self.valid_user_combinations, index)
         user_id -= 1
@@ -51,9 +75,9 @@ class TouchDataset(torch.utils.data.Dataset):
         unstressed_task = user.unstressed_condition.tasks[unstressed_task_id]
 
         # noinspection PyArgumentList
-        stressed_tensor = torch.Tensor(self.cursor_to_list(stressed_task.cursor_entries)).t()
+        stressed_tensor = torch.Tensor(self.separated_track_pad_to_list(stressed_task.separated_track_pad_entries))
         # noinspection PyArgumentList
-        unstressed_tensor = torch.Tensor(self.cursor_to_list(unstressed_task.cursor_entries)).t()
+        unstressed_tensor = torch.Tensor(self.separated_track_pad_to_list(unstressed_task.separated_track_pad_entries))
         return stressed_tensor, unstressed_tensor
 
     def __len__(self):

@@ -43,7 +43,7 @@ if __name__ == "__main__":
     data_splitter = DataSplitter(users)
 
     if mode == "train":
-        model = TouchNet(3, 48)
+        model = TouchNet(7, 112).to(device)
         trainer = TouchTrainer(
             model,
             data_splitter.train_loader,

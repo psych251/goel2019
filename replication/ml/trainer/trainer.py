@@ -40,7 +40,7 @@ class TouchTrainer:
         self.test_loader = test_loader
         self.max_step = max_step
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(params=model.parameters(), lr=0.001, weight_decay=1e-4)
+        self.optimizer = torch.optim.Adam(params=model.parameters(), lr=0.0001, weight_decay=1e-4)
         self.n_iter = 0
         self.min_avg_loss = math.inf
         self.device = device
@@ -74,17 +74,20 @@ class TouchTrainer:
     def process_input(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
         input_a = self.to_device(input_a)
         input_b = self.to_device(input_b)
-        packed_input_a = torch.nn.utils.rnn.pack_sequence(input_a, enforce_sorted=False)
-        packed_input_b = torch.nn.utils.rnn.pack_sequence(input_b, enforce_sorted=False)
-        output_a = self.model(packed_input_a)
-        output_b = self.model(packed_input_b)
-        reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
-        output = torch.cat((output_a.reshape((1, -1)), output_b.reshape((1, -1))), 0)
-        loss = self.criterion(output.t(), reference)
-        correct_rate = torch.mean((output[0, :] > output[1, :]).double())
+        output = self.model(input_a + input_b)
+        output_a = output[0: len(input_a)]
+        output_b = output[len(input_a): len(input_a) + len(input_b)]
+        # reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
+        # noinspection PyArgumentList
+        reference = torch.LongTensor([1] * len(input_a) + [0] * len(input_b)).to(self.device)
+        loss = self.criterion(output, reference)
+        # noinspection PyUnresolvedReferences
+        correct_rate = ((output_a[:, 0] > output_a[:, 1]).float().mean() +
+                        (output_b[:, 0] < output_b[:, 1]).float().mean()) / 2
+        # noinspection PyArgumentList
         return loss, correct_rate
 
-    def train_iter(self, input_a: torch.Tensor, input_b: torch.Tensor):
+    def train_iter(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
         self.model.train()
         loss, correct_rate = self.process_input(input_a, input_b)
         self.writer.add_scalar('train/loss', loss, self.n_iter)
@@ -106,7 +109,7 @@ class TouchTrainer:
 
     # noinspection PyShadowingBuiltins
     def train(self, resume_from: Optional[str]):
-        # torch.autograd.set_detect_anomaly(True)
+        torch.autograd.set_detect_anomaly(True)
 
         output_parent_dir = "./checkpoints"
         if resume_from is None:

@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import math
 from typing import overload, TypeVar, Tuple
+
+from replication.common import SAMPLE_INTERVAL
 
 
 class DataEntry:
@@ -32,18 +36,25 @@ class DataEntry:
 
     @staticmethod
     def interpolate(value_1: E, value_2: E, time: float) -> E:
+        if value_1.time == time:
+            return value_1
         new_value = DataEntry(time)
         new_value.__class__ = type(value_1)
         vars_1 = vars(value_1)
         vars_2 = vars(value_2)
         for name, name_value_1 in vars_1.items():
             name_value_2 = vars_2[name]
-            new_name_value = \
-                DataEntry.interpolate_float((value_1.time, name_value_1), (value_2.time, name_value_2), time)
+            # new_name_value = \
+            #     DataEntry.interpolate_float((value_1.time, name_value_1), (value_2.time, name_value_2), time)
+            new_name_value = name_value_1
             setattr(new_value, name, new_name_value)
-        assert math.fabs(time - new_value.time) < 1e-5
+        # assert math.fabs(time - new_value.time) < 1e-5
+        new_value.time = time
         new_value.valid = False
         return new_value
+
+    def is_close(self, other: DataEntry, tolerance=0):
+        return math.fabs(self.time - other.time) < SAMPLE_INTERVAL + tolerance
 
     def __lt__(self, other):
         if isinstance(other, DataEntry):

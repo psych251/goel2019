@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+SAMPLE_INTERVAL = 0.008
+SAMPLE_TOLERANCE = 0.004
 
 class TaskType(Enum):
     CLICK = 0
