@@ -84,7 +84,7 @@ class TouchTrainer:
         aligned_output = torch.stack((output_a, output_b), dim=1)
         loss = self.criterion(aligned_output, reference)
         # noinspection PyUnresolvedReferences
-        correct_rate = (output_a[:] < output_b[:]).float().mean()
+        correct_rate = (output_a[:] > output_b[:]).float().mean()
         # noinspection PyArgumentList
         return loss, correct_rate
 
