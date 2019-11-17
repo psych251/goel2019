@@ -10,13 +10,14 @@ UNSTRESSED_PREFIX = "unstressed"
 class User:
     stressed_condition: Condition
     unstressed_condition: Condition
+    name: str
 
     def clean_data(self):
         for condition in [self.stressed_condition, self.unstressed_condition]:
             condition.clean_tasks()
 
     @overload
-    def __init__(self, file_prefix):
+    def __init__(self, file_prefix: str, name: str):
         pass
 
     @overload
@@ -27,11 +28,14 @@ class User:
         if len(args) == 0:
             self.stressed_condition = Condition()
             self.unstressed_condition = Condition()
+            self.name = ""
             pass
-        elif len(args) == 1 and isinstance(args[0], str):
+        elif len(args) == 2 and isinstance(args[0], str):
             file_prefix = args[0]
+            name = args[1]
             self.stressed_condition = Condition(os.path.join(file_prefix, STRESSED_PREFIX))
             self.unstressed_condition = Condition(os.path.join(file_prefix, UNSTRESSED_PREFIX))
+            self.name = name
         else:
             raise ValueError
 
@@ -40,5 +44,5 @@ class User:
 
 
 if __name__ == '__main__':
-    example_user = User("../../original_data/data/raw_data/A1/")
+    example_user = User("../../original_data/data/raw_data/A1/", "A1")
     print(example_user)

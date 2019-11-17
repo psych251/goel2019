@@ -21,8 +21,9 @@ def match(a: int, b: int):
 
 
 VAL_RATIO = 0.1
-TEST_RATIO = 0.1
-TRAIN_RATIO = 1 - VAL_RATIO - TEST_RATIO
+# TEST_RATIO = 0.1
+TEST_USERS = ['A11']
+TRAIN_RATIO = 1 - VAL_RATIO
 
 
 class DataSplitter:
@@ -33,12 +34,13 @@ class DataSplitter:
     def __init__(self, users: List[User]):
         train_users = []
         val_users = []
-        test_users = []
 
-        for user in users:
+        test_users = [user for user_id, user in enumerate(users) if user.name in TEST_USERS]
+        not_test_users = [user for user_id, user in enumerate(users) if user.name not in TEST_USERS]
+
+        for user in not_test_users:
             train_user = User()
             val_user = User()
-            test_user = User()
 
             stressed_tasks = user.stressed_condition.tasks
             random.shuffle(stressed_tasks)
@@ -46,14 +48,10 @@ class DataSplitter:
             train_threshold = int(stressed_train)
             stressed_val = len(stressed_tasks) * VAL_RATIO
             val_threshold = int(stressed_train + stressed_val)
-            stressed_test = len(stressed_tasks) * TEST_RATIO
-            test_threshold = int(stressed_train + stressed_val + stressed_test)
             train_user.stressed_condition.tasks = \
                 stressed_tasks[0: train_threshold]
             val_user.stressed_condition.tasks = \
                 stressed_tasks[train_threshold: val_threshold]
-            test_user.stressed_condition.tasks = \
-                stressed_tasks[val_threshold: test_threshold]
 
             unstressed_tasks = user.unstressed_condition.tasks
             random.shuffle(unstressed_tasks)
@@ -61,18 +59,13 @@ class DataSplitter:
             train_threshold = int(unstressed_train)
             unstressed_val = len(unstressed_tasks) * VAL_RATIO
             val_threshold = int(unstressed_train + unstressed_val)
-            unstressed_test = len(unstressed_tasks) * TEST_RATIO
-            test_threshold = int(unstressed_train + unstressed_val + unstressed_test)
             train_user.unstressed_condition.tasks = \
                 unstressed_tasks[0: train_threshold]
             val_user.unstressed_condition.tasks = \
                 unstressed_tasks[train_threshold: val_threshold]
-            test_user.unstressed_condition.tasks = \
-                unstressed_tasks[val_threshold: test_threshold]
 
             train_users += [train_user]
             val_users += [val_user]
-            test_users += [test_user]
 
         self.train_loader = DataLoader(
             TouchDataset(train_users),

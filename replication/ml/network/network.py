@@ -24,11 +24,11 @@ class TouchNet(nn.Module):
         output_length = self.input_network.process_lengths(input_lengths)
         unpadded_output = unpad_output(cnn_output, trace_counts, output_length)
         summed_output = [output.mean(dim=0).t() for output in unpadded_output]
-        lstm_input = pack_sequence(summed_output, enforce_sorted=False)
-        lstm_output = self.lstm_network(lstm_input)  # Throw away output `hidden`
-        return lstm_output
-        # linear_input = torch.stack([output.mean(dim=0) for output in summed_output])
-        # return self.linear(linear_input)
+        # lstm_input = pack_sequence(summed_output, enforce_sorted=False)
+        # lstm_output = self.lstm_network(lstm_input)  # Throw away output `hidden`
+        # return lstm_output
+        linear_input = torch.stack([output.mean(dim=0) for output in summed_output])
+        return self.linear(linear_input)
 
     # noinspection PyShadowingBuiltins
     def forward_single(self, input: torch.Tensor, hidden: Optional[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:

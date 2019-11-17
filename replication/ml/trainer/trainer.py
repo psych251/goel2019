@@ -39,7 +39,7 @@ class TouchTrainer:
         self.val_loader = val_loader
         self.test_loader = test_loader
         self.max_step = max_step
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.BCEWithLogitsLoss()
         self.optimizer = torch.optim.Adam(params=model.parameters(), lr=0.0001, weight_decay=1e-4)
         self.n_iter = 0
         self.min_avg_loss = math.inf
@@ -71,6 +71,23 @@ class TouchTrainer:
     def to_device(self, data: List[torch.Tensor]):
         return [tensor.to(self.device) for tensor in data]
 
+    # def process_input(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
+    #     input_a = self.to_device(input_a)
+    #     input_b = self.to_device(input_b)
+    #     output = self.model(input_a + input_b)
+    #     output_a = output[0: len(input_a)]
+    #     output_b = output[len(input_a): len(input_a) + len(input_b)]
+    #     # reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
+    #     assert len(input_a) == len(input_b)
+    #     # noinspection PyArgumentList
+    #     reference = torch.LongTensor([[0]] * len(input_a)).to(self.device)
+    #     aligned_output = torch.stack((output_a, output_b), dim=1)
+    #     loss = self.criterion(aligned_output, reference)
+    #     # noinspection PyUnresolvedReferences
+    #     correct_rate = (output_a[:] > output_b[:]).float().mean()
+    #     # noinspection PyArgumentList
+    #     return loss, correct_rate
+
     def process_input(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
         input_a = self.to_device(input_a)
         input_b = self.to_device(input_b)
@@ -80,11 +97,10 @@ class TouchTrainer:
         # reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
         assert len(input_a) == len(input_b)
         # noinspection PyArgumentList
-        reference = torch.LongTensor([[0]] * len(input_a)).to(self.device)
-        aligned_output = torch.stack((output_a, output_b), dim=1)
-        loss = self.criterion(aligned_output, reference)
+        reference = torch.LongTensor([[1]] * len(input_a) + [[0]] * len(input_b)).to(self.device).float()
+        loss = self.criterion(output, reference)
         # noinspection PyUnresolvedReferences
-        correct_rate = (output_a[:] > output_b[:]).float().mean()
+        correct_rate = ((output_a[:] > 0).float().mean() + (output_b[:] < 0).float().mean()) / 2
         # noinspection PyArgumentList
         return loss, correct_rate
 

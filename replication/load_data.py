@@ -12,7 +12,7 @@ def load_data() -> List[User]:
     user_dir_names = os.listdir(DATA_DIR)
     for dir_name in user_dir_names:
         user_dir = os.path.join(DATA_DIR, dir_name)
-        user = User(user_dir)
+        user = User(user_dir, dir_name)
         user.clean_data()
         user_list += [user]
     return user_list
