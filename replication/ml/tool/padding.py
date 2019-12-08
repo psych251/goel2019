@@ -12,11 +12,9 @@ def pad_input(input_array: List[torch.Tensor]) -> Tuple[torch.Tensor, List[int],
     trace_counts = [single_input.shape[0] for single_input in input_array]
     input_lengths = [single_input.shape[2] for single_input in input_array]
     target_length = max(input_lengths)
-    print(target_length)
     padded_input_array = [f.pad(single_input, [0, target_length - single_input.shape[2]])
                           for single_input in input_array]
     padded_array = torch.cat(padded_input_array, dim=0)
-    print(padded_array.shape)
     return padded_array, trace_counts, input_lengths
 
 
