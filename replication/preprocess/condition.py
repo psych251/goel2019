@@ -1,4 +1,6 @@
 import bisect
+import copy
+
 import math
 from typing import List, Optional, TypeVar, overload, Tuple
 
@@ -20,6 +22,7 @@ VALID_CURSOR_COUNT = 50
 
 class TaskMoves(Task):
     track_pad_entries: Optional[List[TrackPadEntry]]
+    individual_track_pad_entries: Optional[List[List[TrackPadEntry]]]
     separated_track_pad_entries: Optional[List[List[TrackPadEntry]]]
     cursor_entries: Optional[List[CursorEntry]]
 
@@ -41,26 +44,31 @@ class TaskMoves(Task):
         self.track_pad_entries = self.filter_data_entries(move_file.entries, self.start, self.finish)
 
     def populate_separated_track_pad_entries(self):
-        separated_track_pad_entries: List[List[TrackPadEntry]] = []
+        self.individual_track_pad_entries: List[List[TrackPadEntry]] = []
         for entry in self.track_pad_entries:
             entered = False
-            for history_entries in separated_track_pad_entries:
+            for history_entries in self.individual_track_pad_entries:
                 if history_entries[-1].is_close(entry, SAMPLE_TOLERANCE):
                     history_entries += [entry]
                     entered = True
                     break
             if entered:
                 continue
-            for history_entries in separated_track_pad_entries:
-                if not DataEntry.is_close(history_entries[-1], entry, SAMPLE_INTERVAL):
-                    history_entries += [entry]
+            self.individual_track_pad_entries += [[entry]]
+
+        separated_track_pad_entries_un_padded: List[List[TrackPadEntry]] = []
+        for individual_entries in self.individual_track_pad_entries:
+            entered = False
+            for history_entries in separated_track_pad_entries_un_padded:
+                if individual_entries[0].time - history_entries[-1].time > SAMPLE_INTERVAL:
+                    history_entries += individual_entries
                     entered = True
                     break
             if entered:
                 continue
-            separated_track_pad_entries += [[entry]]
+            separated_track_pad_entries_un_padded += [copy.copy(individual_entries)]
         self.separated_track_pad_entries = \
-            self.fill_separated_data_entries(separated_track_pad_entries, SAMPLE_INTERVAL)
+            self.fill_separated_data_entries(separated_track_pad_entries_un_padded, SAMPLE_INTERVAL)
 
     @staticmethod
     def fill_separated_data_entries(data_entries: List[List[E]], interval: float) -> List[List[E]]:
@@ -137,7 +145,13 @@ class TaskMoves(Task):
     def separated_track_pad_df(self):
         data_frames = [self.track_pad_entries_to_df(entries)
                        for entries in self.separated_track_pad_entries]
-        return pandas.concat(data_frames, keys=range(len(data_frames)))
+        return pandas.concat(data_frames, keys=range(len(data_frames)), names=["bundle"]).reset_index(0)
+
+    @property
+    def individual_track_pad_df(self):
+        data_frames = [self.track_pad_entries_to_df(entries)
+                       for entries in self.individual_track_pad_entries]
+        return pandas.concat(data_frames, keys=range(len(data_frames)), names=["stroke"]).reset_index(0)
 
     @property
     def cursor_df(self):
@@ -190,6 +204,11 @@ class Condition:
                 task.populate_cursor_entries(cursor_file)
         else:
             raise ValueError
+
+    def __copy__(self):
+        condition = Condition()
+        condition.tasks = [copy.copy(task) for task in self.tasks]
+        return condition
 
     def clean_tasks(self):
         self.tasks = list(filter(lambda task: len(task.cursor_entries) > VALID_CURSOR_COUNT, self.tasks))

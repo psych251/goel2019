@@ -1,3 +1,4 @@
+import copy
 import os
 from typing import overload
 
@@ -15,6 +16,12 @@ class User:
     def clean_data(self):
         for condition in [self.stressed_condition, self.unstressed_condition]:
             condition.clean_tasks()
+
+    def __copy__(self):
+        user = User()
+        user.stressed_condition = copy.copy(self.stressed_condition)
+        user.unstressed_condition = copy.copy(self.unstressed_condition)
+        return user
 
     @overload
     def __init__(self, file_prefix: str, name: str):
