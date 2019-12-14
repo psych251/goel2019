@@ -1,7 +1,8 @@
 import random
 
+import copy
 from torch.utils.data import DataLoader
-from typing import List
+from typing import List, Dict
 
 from replication.ml.data.dataset import TouchDataset
 from replication.ml.params import BATCH_SIZE, WORKER_NUM
@@ -9,11 +10,7 @@ from replication.preprocess.user import User
 
 
 def collate_data(array):
-    data = [[], []]
-    for x, y in array:
-        data[0] += [x]
-        data[1] += [y]
-    return data
+    return array
 
 
 def match(a: int, b: int):
@@ -21,26 +18,27 @@ def match(a: int, b: int):
 
 
 VAL_RATIO = 0.1
-# TEST_RATIO = 0.1
-TEST_USERS = ['A11']
 TRAIN_RATIO = 1 - VAL_RATIO
 
 
 class DataSplitter:
     train_loader: DataLoader
     val_loader: DataLoader
-    test_loader: DataLoader
+    test_loader: Dict[str, DataLoader]
+    user_names: List[str]
 
     def __init__(self, users: List[User]):
         train_users = []
         val_users = []
+        test_users = copy.copy(users)
+        self.user_names = [user.name for user in users]
 
-        test_users = [user for user_id, user in enumerate(users) if user.name in TEST_USERS]
-        not_test_users = [user for user_id, user in enumerate(users) if user.name not in TEST_USERS]
-
-        for user in not_test_users:
+        for user in users:
             train_user = User()
             val_user = User()
+
+            train_user.name = user.name
+            val_user.name = val_user.name
 
             stressed_tasks = user.stressed_condition.tasks
             random.shuffle(stressed_tasks)
@@ -80,9 +78,9 @@ class DataSplitter:
             collate_fn=collate_data,
             num_workers=WORKER_NUM
         )
-        self.test_loader = DataLoader(
-            TouchDataset(test_users),
+        self.test_loader = {user.name: DataLoader(
+            TouchDataset([user]),
             batch_size=BATCH_SIZE,
             collate_fn=collate_data,
             num_workers=WORKER_NUM
-        )
+        ) for user in test_users}

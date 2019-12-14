@@ -70,6 +70,7 @@ class TouchDataset(torch.utils.data.Dataset):
         task_index = index - self.valid_user_combinations[user_id]
         stressed_task_count = len(user.stressed_condition.tasks)
         stressed_task_id = task_index % stressed_task_count
+        unstressed_task_count = len(user.unstressed_condition.tasks)
         unstressed_task_id = task_index // stressed_task_count
         stressed_task = user.stressed_condition.tasks[stressed_task_id]
         unstressed_task = user.unstressed_condition.tasks[unstressed_task_id]
@@ -78,7 +79,11 @@ class TouchDataset(torch.utils.data.Dataset):
         stressed_tensor = torch.Tensor(self.separated_track_pad_to_list(stressed_task.separated_track_pad_entries))
         # noinspection PyArgumentList
         unstressed_tensor = torch.Tensor(self.separated_track_pad_to_list(unstressed_task.separated_track_pad_entries))
-        return stressed_tensor, unstressed_tensor
+        return (
+                   self.users[user_id].name,
+                   stressed_task_id / stressed_task_count,
+                   unstressed_task_id / unstressed_task_count
+               ), (stressed_tensor, unstressed_tensor)
 
     def __len__(self):
         return self.total_combinations

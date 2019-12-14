@@ -24,7 +24,8 @@ def process_data(data_model: torch.nn.Module, data_loader: DataLoader, device: t
 if __name__ == "__main__":
     random.seed(24)
     mode = sys.argv[1]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1")
 
     with open("./processed_data/users.pickle", "rb") as user_file:
         users = pickle.load(user_file)
@@ -32,12 +33,8 @@ if __name__ == "__main__":
     data_splitter = DataSplitter(users)
 
     if mode == "train":
-        model = TouchNet(7, 112).to(device)
         trainer = TouchTrainer(
-            model,
-            data_splitter.train_loader,
-            data_splitter.val_loader,
-            data_splitter.test_loader,
+            data_splitter,
             device
         )
 
