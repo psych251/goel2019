@@ -1,6 +1,7 @@
 import pickle
 import random
 import sys
+import os
 
 import torch.utils.data
 from torch.utils.data import DataLoader
@@ -38,28 +39,55 @@ if __name__ == "__main__":
             device
         )
 
-        trainer.train(None)
+        if len(sys.argv) > 2:
+            trainer.train(sys.argv[2])
+        else:
+            trainer.train(None)
         # trainer.close("./train.json")
     elif mode == "test":
-        model = TouchNet(7, 112).to(device)
         trainer = TouchTrainer(
-            model,
-            data_splitter.train_loader,
-            data_splitter.val_loader,
-            data_splitter.test_loader,
+            data_splitter,
             device
         )
-        trainer.load_from(sys.argv[2])
-        user_splitter = UserSplitter(users)
-        for user_id in range(len(user_splitter.user_loaders)):
-            model.eval()
-            stressed_result = process_data(model, user_splitter.user_loaders[user_id][0], device)
-            unstressed_result = process_data(model, user_splitter.user_loaders[user_id][1], device)
-            stressed_result_np = stressed_result.cpu().detach().numpy()
-            unstressed_result_np = unstressed_result.cpu().detach().numpy()
+        files = os.listdir(sys.argv[2])
+        train_iter_limit = int(sys.argv[3]) if len(sys.argv) >= 4 else -1
+        for file in files:
+            name_segments = file.split('_')
+            if len(name_segments) > 0 and name_segments[0] == 'modelTrained':
+                file_name, user_name, train_iter_str, loss = name_segments
+                train_iter = int(train_iter_str)
+                if train_iter_limit == -1 or train_iter < train_iter_limit:
+                    trainer.save_files[user_name][train_iter] = sys.argv[2] + "/" + file
 
-            sns.distplot(stressed_result_np, color="skyblue", label="Stressed")
-            sns.distplot(unstressed_result_np, color="red", label="Unstressed")
-            plt.legend()
-            plt.savefig(f'user {user_id}.pdf')
-            plt.clf()
+        data_frame_dict = {"user": [], "output": [], "reference": []}
+        for user_id, user in enumerate(trainer.user_names):
+            trainer.current_user_id = user_id
+            trainer.load_model(trainer.current_user_name)
+            _, _, _, output, reference = trainer.eval(test=True)
+            data_frame_dict["user"] += [user_id] * len(output)
+            data_frame_dict["output"] += output.tolist()
+            data_frame_dict["reference"] += reference.tolist()
+
+        import pandas
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        df = pandas.DataFrame(data_frame_dict)
+        df.to_csv('output_reference_30.csv')
+        # sns.barplot('user', 'rate', data=df)
+        # plt.savefig("user_rate.pdf")
+
+
+        # user_splitter = UserSplitter(users)
+        # for user_id in range(len(user_splitter.user_loaders)):
+        #     model.eval()
+        #     stressed_result = process_data(model, user_splitter.user_loaders[user_id][0], device)
+        #     unstressed_result = process_data(model, user_splitter.user_loaders[user_id][1], device)
+        #     stressed_result_np = stressed_result.cpu().detach().numpy()
+        #     unstressed_result_np = unstressed_result.cpu().detach().numpy()
+        #
+        #     sns.distplot(stressed_result_np, color="skyblue", label="Stressed")
+        #     sns.distplot(unstressed_result_np, color="red", label="Unstressed")
+        #     plt.legend()
+        #     plt.savefig(f'user {user_id}.pdf')
+        #     plt.clf()

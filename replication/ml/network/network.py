@@ -45,3 +45,12 @@ class TouchNet(nn.Module):
             return self.forward_single(input, hidden)
         else:
             raise ValueError
+
+    def forward_features(self, input):
+        padded_input, trace_counts, input_lengths = pad_input(input)
+        cnn_output = self.input_network(padded_input)
+        # noinspection PyUnresolvedReferences
+        output_length = self.input_network.process_lengths(input_lengths)
+        unpadded_output = unpad_output(cnn_output, trace_counts, output_length)
+        summed_output = [output.mean(dim=2) for output in unpadded_output]
+        return summed_output
