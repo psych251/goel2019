@@ -44,11 +44,32 @@ class User:
             ]
             mean = np.average(values)
             var = np.std(values)
-            for condition in conditions:
-                for task in condition.tasks:
-                    for entry in task.track_pad_entries:
-                        setattr(entry, moves_value, (getattr(entry, moves_value) - mean) / var)
-                    task.populate_separated_track_pad_entries()
+            if var != 0:
+                for condition in conditions:
+                    for task in condition.tasks:
+                        for entry in task.track_pad_entries:
+                            setattr(entry, moves_value, (getattr(entry, moves_value) - mean) / var)
+                        task.populate_separated_track_pad_entries()
+
+    def normalize_separated_track_pad_entries(self):
+        moves_values = ["x", "y", "x_speed", "y_speed", "major_axis", "minor_axis", "contact_area"]
+        conditions = [self.stressed_condition, self.unstressed_condition]
+        for moves_value in moves_values:
+            values = [
+                getattr(entry, moves_value)
+                for condition in conditions
+                for task in condition.tasks
+                for trace in task.separated_track_pad_entries
+                for entry in trace
+            ]
+            mean = np.average(values)
+            var = np.std(values)
+            if var != 0:
+                for condition in conditions:
+                    for task in condition.tasks:
+                        for trace in task.separated_track_pad_entries:
+                            for entry in trace:
+                                setattr(entry, moves_value, (getattr(entry, moves_value) - mean) / var)
 
     def __init__(self, *args):
         if len(args) == 0:
