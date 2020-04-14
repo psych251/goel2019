@@ -40,7 +40,7 @@ if __name__ == '__main__':
     #%%
     import pickle
 
-    with open("./processed_data/users.pickle", "wb") as user_file:
+    with open("./processed_data/users_normalized.pickle", "wb") as user_file:
         pickle.dump(users, user_file)
 
     # %%

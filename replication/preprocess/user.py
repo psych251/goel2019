@@ -1,6 +1,7 @@
 import copy
 import os
 from typing import overload
+import numpy as np
 
 from replication.preprocess.condition import Condition
 
@@ -31,6 +32,24 @@ class User:
     def __init__(self):
         pass
 
+    def normalize_data(self):
+        moves_values = ["x", "y", "x_speed", "y_speed", "major_axis", "minor_axis", "contact_area"]
+        conditions = [self.stressed_condition, self.unstressed_condition]
+        for moves_value in moves_values:
+            values = [
+                getattr(entry, moves_value)
+                for condition in conditions
+                for task in condition.tasks
+                for entry in task.track_pad_entries
+            ]
+            mean = np.average(values)
+            var = np.std(values)
+            for condition in conditions:
+                for task in condition.tasks:
+                    for entry in task.track_pad_entries:
+                        setattr(entry, moves_value, (getattr(entry, moves_value) - mean) / var)
+                    task.populate_separated_track_pad_entries()
+
     def __init__(self, *args):
         if len(args) == 0:
             self.stressed_condition = Condition()
@@ -43,6 +62,7 @@ class User:
             self.stressed_condition = Condition(os.path.join(file_prefix, STRESSED_PREFIX))
             self.unstressed_condition = Condition(os.path.join(file_prefix, UNSTRESSED_PREFIX))
             self.name = name
+            self.normalize_data()
         else:
             raise ValueError
 

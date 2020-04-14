@@ -265,7 +265,7 @@ class TouchTrainer:
                                 print(f"Discarded {len(filtered_input)} train data")
                             continue
                         input_a, input_b = zip(*filtered_input)
-                        if self.n_iter < 5000:
+                        if self.n_iter < 0:
                             self.train_features_iter(input_a, input_b)
                         else:
                             self.train_iter(input_a, input_b)
