@@ -130,7 +130,7 @@ class TaskMoves(Task):
     def track_pad_entries_to_df(entries: List[TrackPadEntry]) -> pandas.DataFrame:
         return pandas.DataFrame([vars(entry) for entry in entries],
                                 columns=["time", "press", "pos", "x", "y", "x_speed", "y_speed", "major_axis",
-                                         "minor_axis", "contact_area"])
+                                         "minor_axis", "contact_area", "valid"])
 
     @staticmethod
     def cursor_entries_to_df(entries: List[CursorEntry]) -> pandas.DataFrame:

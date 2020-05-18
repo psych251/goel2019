@@ -21,7 +21,7 @@ SAVE_FILE_NAME = "save.pickle"
 
 def append_to(array: Optional[np.array], new_array: torch.Tensor):
     new_array_np = new_array.cpu().detach().numpy()
-    if len(new_array_np.shape) <= 1:
+    if len(new_array_np.shape) <= 0:
         new_array_np = np.array([new_array_np])
     if array is None:
         return new_array_np
@@ -72,7 +72,7 @@ class TouchTrainer:
     def __init__(self, data_splitter: DataSplitter, device, max_step=10000000):
         self.data_splitter = data_splitter
         self.max_step = max_step
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.BCEWithLogitsLoss()
         self.features_criterion = nn.MSELoss()
         self.n_iter = 0
         self.device = device
@@ -108,7 +108,7 @@ class TouchTrainer:
         if checkpoint_path is None:
             self.n_iter = 0
             # noinspection PyUnresolvedReferences
-            self.model = TouchNet(7, 112).to(self.device)
+            self.model = TouchNet(13, 208).to(self.device)
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
             return False
         print(f"checkpoint file: {checkpoint_path}")
@@ -160,48 +160,42 @@ class TouchTrainer:
     def to_device(self, data: List[torch.Tensor]):
         return [tensor.to(self.device) for tensor in data]
 
-    def process_input(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
-        input_a = self.to_device(input_a)
-        input_b = self.to_device(input_b)
-        output = self.model(input_a + input_b)
-        output_a = output[0: len(input_a)]
-        output_b = output[len(input_a): len(input_a) + len(input_b)]
-        # reference = torch.zeros((len(input_a)), dtype=torch.long).to(self.device)
-        assert len(input_a) == len(input_b)
-        # noinspection PyArgumentList
-        reference = torch.LongTensor([[0]] * len(input_a)).to(self.device)
-        aligned_output = torch.stack((output_a, output_b), dim=1)
-        loss = self.criterion(aligned_output, reference)
+    def process_input(self, input_y: List[torch.Tensor], input_x: List[torch.Tensor]):
+        input_y = torch.Tensor(input_y).to(self.device)
+        input_x = self.to_device(input_x)
+        output = self.model(input_x).mean(1)
+        reference: torch.Tensor = input_y
+        loss = self.criterion(output, reference)
         # noinspection PyUnresolvedReferences
-        correct_rate = (output_a[:] > output_b[:]).float().mean()
+        correct_rate = ((reference * 2 - 1) * output[:] > 0.5).float().mean()
         # noinspection PyArgumentList
-        return loss, correct_rate, aligned_output, reference
+        return loss, correct_rate, output, reference
 
-    def process_input_features(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
-        input_a = self.to_device(input_a)
-        input_b = self.to_device(input_b)
-        output = self.model.forward_features(input_a + input_b)
-        reference = self.to_device(compute_features_reference(input_a + input_b))
-        cropped_output = [single_output[:, 0: reference[0].shape[1]] for single_output in output]
-        loss = self.features_criterion(torch.cat(cropped_output), torch.cat(reference))
-        return loss
+    # def process_input_features(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
+    #     input_a = self.to_device(input_a)
+    #     input_b = self.to_device(input_b)
+    #     output = self.model.forward_features(input_a + input_b)
+    #     reference = self.to_device(compute_features_reference(input_a + input_b))
+    #     cropped_output = [single_output[:, 0: reference[0].shape[1]] for single_output in output]
+    #     loss = self.features_criterion(torch.cat(cropped_output), torch.cat(reference))
+    #     return loss
 
-    def train_iter(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
+    def train_iter(self, input_y: List[torch.Tensor], input_x: List[torch.Tensor]):
         self.model.train()
-        loss, correct_rate, _, _ = self.process_input(input_a, input_b)
+        loss, correct_rate, _, _ = self.process_input(input_y, input_x)
         self.add_scalar('train/loss', loss.detach().cpu().numpy())
         self.add_scalar('train/rate', correct_rate.detach().cpu().numpy())
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-    def train_features_iter(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
-        self.model.train()
-        loss = self.process_input_features(input_a, input_b)
-        self.add_scalar('train/features_loss', loss.detach().cpu().numpy())
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+    # def train_features_iter(self, input_y: List[torch.Tensor], input_y: List[torch.Tensor]):
+    #     self.model.train()
+    #     loss = self.process_input_features(input_a, input_b)
+    #     self.add_scalar('train/features_loss', loss.detach().cpu().numpy())
+    #     self.optimizer.zero_grad()
+    #     loss.backward()
+    #     self.optimizer.step()
 
     @staticmethod
     def data_loader_generator(data_loader: DataLoader):
@@ -257,18 +251,14 @@ class TouchTrainer:
                         testing_done = True
                     else:
                         input_data = next(train_gen)
-                        filtered_input = [input_entry for (name, per_1, per_2), input_entry in input_data if
-                                          name != self.current_user_name or
-                                          (per_1 <= TEST_RATIO and per_1 <= TEST_RATIO)]
+                        filtered_input = [input_entry for (name, per), input_entry in input_data if
+                                          name != self.current_user_name or per <= TEST_RATIO]
                         if len(filtered_input) < BATCH_MIN:
                             if len(filtered_input) != 0:
                                 print(f"Discarded {len(filtered_input)} train data")
                             continue
-                        input_a, input_b = zip(*filtered_input)
-                        if self.n_iter < 0:
-                            self.train_features_iter(input_a, input_b)
-                        else:
-                            self.train_iter(input_a, input_b)
+                        input_y, input_x = zip(*filtered_input)
+                        self.train_iter(input_y, input_x)
                         self.n_iter += 1
                         evaluation_done = False
                         testing_done = False
@@ -294,7 +284,6 @@ class TouchTrainer:
     def eval(self, test=False, checkpoint=True):
         self.model.eval()
         loss_array: Optional[List[float]] = None
-        features_loss_array: Optional[List[float]] = None
         rate_array: Optional[List[float]] = None
         output_array: Optional[List[float]] = None
         reference_array: Optional[List[float]] = None
@@ -302,19 +291,18 @@ class TouchTrainer:
         prefix = "test/" if test else "val/"
         for input_data in data_loader:
             if test:
-                filtered_input = [input_entry for (name, per_1, per_2), input_entry in input_data if per_1 > TEST_RATIO and per_1 > TEST_RATIO]
+                filtered_input = [input_entry for (name, per), input_entry in input_data if per > TEST_RATIO]
             else:
-                filtered_input = [input_entry for (name, per_1, per_2), input_entry in input_data if name != self.current_user_name]
+                filtered_input = [input_entry for (name, per), input_entry in input_data
+                                  if name != self.current_user_name or per <= TEST_RATIO]
             if len(filtered_input) < BATCH_MIN:
                 if len(filtered_input) != 0:
                     print(f"Discarded {len(filtered_input)} eval/test data")
                 continue
-            input_a, input_b = zip(*filtered_input)
-            loss, correct_rate, output, reference = self.process_input(input_a, input_b)
+            input_y, input_x = zip(*filtered_input)
+            loss, correct_rate, output, reference = self.process_input(input_y, input_x)
             loss_array = append_to(loss_array, loss)
             rate_array = append_to(rate_array, correct_rate)
-            features_loss = self.process_input_features(input_a, input_b)
-            features_loss_array = append_to(features_loss_array, features_loss)
             output_array = append_to(output_array, output)
             reference_array = append_to(reference_array, reference)
 
@@ -322,8 +310,6 @@ class TouchTrainer:
         self.add_scalar(prefix + 'avg_loss', avg_loss)
         avg_rate = np.average(rate_array)
         self.add_scalar(prefix + 'avg_rate', avg_rate)
-        avg_features_loss = np.average(features_loss_array)
-        self.add_scalar(prefix + 'avg_features_loss', avg_features_loss)
         if checkpoint:
             self.last_loss = avg_loss
         return avg_loss, loss_array, rate_array, output_array, reference_array

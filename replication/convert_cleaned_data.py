@@ -4,7 +4,7 @@ import re
 
 import copy
 
-from replication.common import TaskType
+from replication.common import TaskType, SAMPLE_INTERVAL
 from replication.preprocess.condition import TaskMoves
 from replication.preprocess.console import Task
 from replication.preprocess.moves import TrackPadEntry
@@ -37,7 +37,7 @@ def convert_moves(old_moves):
             current_task.start = time_start
             current_task.finish = time_end
             moves = TaskMoves(current_task)
-            moves.separated_track_pad_entries = [
+            new_separated_track_pad_entries = [
                 [
                     TrackPadEntry(
                         entry['timestamp'],
@@ -52,6 +52,8 @@ def convert_moves(old_moves):
                 ]
                 for stroke in task_trace
             ]
+            moves.separated_track_pad_entries = \
+                TaskMoves.fill_separated_data_entries(new_separated_track_pad_entries, SAMPLE_INTERVAL)
             new_moves += [moves]
     return new_moves
 
@@ -65,6 +67,8 @@ users = []
 for dir_name in user_dir_names:
     if '.' in dir_name:
         continue
+
+    print(f"Working on {dir_name}...")
     user_dir = os.path.join(CLEANED_DATA_DIR, dir_name)
     stressed_cut_moves_dir = os.path.join(user_dir, "stressed_cut_moves.json")
     unstressed_cut_moves_dir = os.path.join(user_dir, "unstressed_cut_moves.json")
@@ -75,13 +79,25 @@ for dir_name in user_dir_names:
     with open(unstressed_cut_moves_dir) as unstressed_cut_moves_file:
         unstressed_cut_moves = json.load(unstressed_cut_moves_file)
     current_user = User()
+    current_user.name = dir_name
     current_user.stressed_condition.tasks = sorted(convert_moves(stressed_cut_moves), key=lambda move: move.start)
     current_user.unstressed_condition.tasks = sorted(convert_moves(unstressed_cut_moves), key=lambda move: move.start)
     current_user.normalize_separated_track_pad_entries()
     users += [current_user]
 
-#%%
+# %%
 import pickle
 
 with open("./processed_data/users_cleaned_normalized.pickle", "wb") as user_file:
     pickle.dump(users, user_file)
+
+# %%
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df = users[0].unstressed_condition.tasks[100].separated_track_pad_df
+df2 = df.reset_index(level=0)
+plt.figure(figsize=(5, 3))
+sns.scatterplot(x='time', y='x', hue='bundle', style='valid', data=df2, linewidth=0, alpha=0.7)
+plt.savefig('test.pdf')
+# plt.show()

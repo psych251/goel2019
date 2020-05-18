@@ -34,11 +34,17 @@ class DataSplitter:
         self.user_names = [user.name for user in users]
 
         for user in users:
+            for condition in [user.unstressed_condition, user.stressed_condition]:
+                task_count = len(condition.tasks)
+                for task_id, task in enumerate(condition.tasks):
+                    task.per = task_id / task_count
+
+        for user in users:
             train_user = User()
             val_user = User()
 
             train_user.name = user.name
-            val_user.name = val_user.name
+            val_user.name = user.name
 
             stressed_tasks = user.stressed_condition.tasks
             random.shuffle(stressed_tasks)

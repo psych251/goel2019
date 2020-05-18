@@ -11,9 +11,7 @@ from replication.preprocess.user import User
 
 class TouchDataset(torch.utils.data.Dataset):
     valid_user_tasks: List[Tuple[int]]
-    valid_user_combinations: List[int]
     total_combinations: int
-    users: List[User]
 
     def __init__(self, users: List[User]):
         self.valid_user_tasks = []
@@ -23,9 +21,7 @@ class TouchDataset(torch.utils.data.Dataset):
             stressed_count = len(user.stressed_condition.tasks)
             unstressed_count = len(user.unstressed_condition.tasks)
             self.valid_user_tasks += [(stressed_count, unstressed_count)]
-            new_combinations = stressed_count * unstressed_count
-            self.valid_user_combinations += [self.total_combinations]
-            self.total_combinations += new_combinations
+            self.total_combinations += stressed_count + unstressed_count
         self.users = users
 
     @staticmethod
@@ -45,45 +41,36 @@ class TouchDataset(torch.utils.data.Dataset):
         y = []
         major = []
         minor = []
-        area = []
         valid = []
-        press = []
+        press = [[] for _ in range(8)]
         for entry in entries:
             x += [entry.x]
             y += [entry.y]
-            valid += [1.0 if entry.valid else 0.0]
             major += [entry.major_axis]
             minor += [entry.minor_axis]
-            area += [entry.contact_area]
-            press += [entry.press]
-        return x, y, major, minor, valid, press, area
+            valid += [entry.valid]
+            for i in range(8):
+                press[i] += [1.0 if entry.pos == i else 0.0]
+        return [x, y, major, minor, valid] + press
 
     @staticmethod
     def separated_track_pad_to_list(entries_list: List[List[TrackPadEntry]]):
         return [TouchDataset.track_pad_to_list(entries) for entries in entries_list]
 
     def __getitem__(self, index):
-        user_id = _bisect.bisect_right(self.valid_user_combinations, index)
-        user_id -= 1
-        user = self.users[user_id]
-
-        task_index = index - self.valid_user_combinations[user_id]
-        stressed_task_count = len(user.stressed_condition.tasks)
-        stressed_task_id = task_index % stressed_task_count
-        unstressed_task_count = len(user.unstressed_condition.tasks)
-        unstressed_task_id = task_index // stressed_task_count
-        stressed_task = user.stressed_condition.tasks[stressed_task_id]
-        unstressed_task = user.unstressed_condition.tasks[unstressed_task_id]
-
-        # noinspection PyArgumentList
-        stressed_tensor = torch.Tensor(self.separated_track_pad_to_list(stressed_task.separated_track_pad_entries))
-        # noinspection PyArgumentList
-        unstressed_tensor = torch.Tensor(self.separated_track_pad_to_list(unstressed_task.separated_track_pad_entries))
-        return (
-                   self.users[user_id].name,
-                   stressed_task_id / stressed_task_count,
-                   unstressed_task_id / unstressed_task_count
-               ), (stressed_tensor, unstressed_tensor)
+        found = False
+        for user_id, user in enumerate(self.users):
+            for label, condition in zip([1, 0], [user.stressed_condition, user.unstressed_condition]):
+                task_count = len(condition.tasks)
+                if index < task_count:
+                    found = True
+                    break
+                else:
+                    index -= task_count
+            if found:
+                break
+        tensor = torch.Tensor(self.separated_track_pad_to_list(condition.tasks[index].separated_track_pad_entries))
+        return (self.users[user_id].name, condition.tasks[index].per), (label, tensor)
 
     def __len__(self):
         return self.total_combinations
