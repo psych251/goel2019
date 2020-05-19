@@ -19,6 +19,7 @@ class InputNet(nn.Module):
                 kernel_size=self.kernel1_size,
                 padding=(self.kernel1_size - 1) // 2
             ),
+            nn.ReLU(),
             nn.BatchNorm1d(input_dim * 2)
         )
 

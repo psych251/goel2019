@@ -18,6 +18,30 @@ def pad_input(input_array: List[torch.Tensor]) -> Tuple[torch.Tensor, List[int],
     return padded_array, trace_counts, input_lengths
 
 
+def unpad_output_by_trace(input_array: torch.Tensor, trace_counts: List[int], input_lengths: List[int]) -> List[
+    torch.Tensor]:
+    output_array = []
+    current_pos = 0
+    for trace_count, input_length in zip(trace_counts, input_lengths):
+        next_pos = current_pos + trace_count
+        output_array += [input_array[i, :, 0: input_length] for i in range(current_pos, next_pos)]
+        current_pos = next_pos
+    assert (current_pos == input_array.shape[0])
+    return output_array
+
+
+def unpad_output_traces(input_array: torch.Tensor, trace_counts: List[int]) -> List[
+    torch.Tensor]:
+    output_array = []
+    current_pos = 0
+    for trace_count in trace_counts:
+        next_pos = current_pos + trace_count
+        output_array += [input_array[current_pos: next_pos, :]]
+        current_pos = next_pos
+    assert(current_pos == input_array.shape[0])
+    return output_array
+
+
 def unpad_output(input_array: torch.Tensor, trace_counts: List[int], input_lengths: List[int]) -> List[torch.Tensor]:
     output_array = []
     current_pos = 0
@@ -25,4 +49,5 @@ def unpad_output(input_array: torch.Tensor, trace_counts: List[int], input_lengt
         next_pos = current_pos + trace_count
         output_array += [input_array[current_pos: next_pos, :, 0: input_length]]
         current_pos = next_pos
+    assert(current_pos == input_array.shape[0])
     return output_array

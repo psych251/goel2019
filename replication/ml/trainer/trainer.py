@@ -116,7 +116,7 @@ class TouchTrainer:
             checkpoint = torch.load(model_file)
         self.n_iter = checkpoint['epoch']
         if not hasattr(self, 'model'):
-            self.model = TouchNet(7, 112).to(self.device)
+            self.model = TouchNet(13, 208).to(self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
@@ -148,7 +148,7 @@ class TouchTrainer:
     def load_dir(self, file_dir):
         files = os.listdir(file_dir)
         self.current_user_id = -1
-        self.model = TouchNet(7, 112).to(self.device)
+        self.model = TouchNet(13, 208).to(self.device)
         self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
         print("model created")
         for file in files:
@@ -163,7 +163,7 @@ class TouchTrainer:
     def process_input(self, input_y: List[torch.Tensor], input_x: List[torch.Tensor]):
         input_y = torch.Tensor(input_y).to(self.device)
         input_x = self.to_device(input_x)
-        output = self.model(input_x).mean(1)
+        output = self.model(input_x)
         reference: torch.Tensor = input_y
         loss = self.criterion(output, reference)
         # noinspection PyUnresolvedReferences
@@ -233,7 +233,7 @@ class TouchTrainer:
 
         while True:
             for self.current_user_id in range(len(self.user_names)):
-            # for self.current_user_id in range(2):
+            # for self.current_user_id in range(1):
                 self.load_model(self.current_user_name)
                 start_iter = self.n_iter
                 print(f"User {self.current_user_name} iter {self.n_iter}-{self.n_iter + USER_ITER}")

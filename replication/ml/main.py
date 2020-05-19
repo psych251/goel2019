@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cuda:1")
 
-    with open("./processed_data/users_cleaned_normalized.pickle", "rb") as user_file:
+    with open("./processed_data/users_normalized.pickle", "rb") as user_file:
         users = pickle.load(user_file)
 
     data_splitter = DataSplitter(users)
