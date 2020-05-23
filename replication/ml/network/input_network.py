@@ -15,50 +15,50 @@ class InputNet(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv1d(
                 in_channels=input_dim,
+                out_channels=input_dim,
+                kernel_size=self.kernel1_size,
+                padding=(self.kernel1_size - 1) // 2
+            ),
+            nn.ReLU(),
+            nn.BatchNorm1d(input_dim)
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(
+                in_channels=input_dim,
                 out_channels=input_dim * 2,
                 kernel_size=self.kernel1_size,
                 padding=(self.kernel1_size - 1) // 2
             ),
             nn.ReLU(),
-            nn.BatchNorm1d(input_dim * 2)
-        )
-
-        self.conv2 = nn.Sequential(
-            nn.Conv1d(
-                in_channels=input_dim * 2,
-                out_channels=input_dim * 4,
-                kernel_size=self.kernel1_size,
-                padding=(self.kernel1_size - 1) // 2
-            ),
-            nn.ReLU(),
             nn.MaxPool1d(kernel_size=self.kernel1_size, ceil_mode=True),
-            nn.BatchNorm1d(input_dim * 4)
+            nn.BatchNorm1d(input_dim * 2)
         )
 
         self.conv3 = nn.Sequential(
             nn.Conv1d(
-                in_channels=input_dim * 4,
-                out_channels=input_dim * 8,
+                in_channels=input_dim * 2,
+                out_channels=input_dim * 2,
                 kernel_size=self.kernel2_size,
                 padding=(self.kernel2_size - 1) // 2
             ),
             nn.ReLU(),
-            nn.BatchNorm1d(input_dim * 8)
+            nn.BatchNorm1d(input_dim * 2)
         )
 
         self.conv4 = nn.Sequential(
             nn.Conv1d(
-                in_channels=input_dim * 8,
-                out_channels=input_dim * 16,
+                in_channels=input_dim * 2,
+                out_channels=input_dim * 2,
                 kernel_size=self.kernel2_size,
                 padding=(self.kernel2_size - 1) // 2
             ),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=self.kernel2_size, ceil_mode=True),
-            nn.BatchNorm1d(input_dim * 16),
+            nn.BatchNorm1d(input_dim * 2),
         )
         self.dropout = nn.Dropout(p=0.5)
-        assert input_dim * 16 == output_dim
+        assert input_dim * 2 == output_dim
 
     # noinspection PyShadowingBuiltins
     def forward(self, input: torch.Tensor):

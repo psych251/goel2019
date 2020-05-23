@@ -108,7 +108,7 @@ class TouchTrainer:
         if checkpoint_path is None:
             self.n_iter = 0
             # noinspection PyUnresolvedReferences
-            self.model = TouchNet(13, 208).to(self.device)
+            self.model = TouchNet(13, 26).to(self.device)
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
             return False
         print(f"checkpoint file: {checkpoint_path}")
@@ -116,7 +116,7 @@ class TouchTrainer:
             checkpoint = torch.load(model_file)
         self.n_iter = checkpoint['epoch']
         if not hasattr(self, 'model'):
-            self.model = TouchNet(13, 208).to(self.device)
+            self.model = TouchNet(13, 26).to(self.device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
@@ -148,7 +148,7 @@ class TouchTrainer:
     def load_dir(self, file_dir):
         files = os.listdir(file_dir)
         self.current_user_id = -1
-        self.model = TouchNet(13, 208).to(self.device)
+        self.model = TouchNet(13, 26).to(self.device)
         self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.0001, weight_decay=1e-4)
         print("model created")
         for file in files:
@@ -233,7 +233,7 @@ class TouchTrainer:
 
         while True:
             for self.current_user_id in range(len(self.user_names)):
-            # for self.current_user_id in range(1):
+            # for self.current_user_id in [self.user_names.index('A5')]:
                 self.load_model(self.current_user_name)
                 start_iter = self.n_iter
                 print(f"User {self.current_user_name} iter {self.n_iter}-{self.n_iter + USER_ITER}")
