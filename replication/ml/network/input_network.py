@@ -15,17 +15,17 @@ class InputNet(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv1d(
                 in_channels=input_dim,
-                out_channels=input_dim,
+                out_channels=input_dim * 2,
                 kernel_size=self.kernel1_size,
                 padding=(self.kernel1_size - 1) // 2
             ),
             nn.ReLU(),
-            nn.BatchNorm1d(input_dim)
+            nn.BatchNorm1d(input_dim * 2)
         )
 
         self.conv2 = nn.Sequential(
             nn.Conv1d(
-                in_channels=input_dim,
+                in_channels=input_dim * 2,
                 out_channels=input_dim * 2,
                 kernel_size=self.kernel1_size,
                 padding=(self.kernel1_size - 1) // 2

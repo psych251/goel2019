@@ -15,9 +15,7 @@ def match(a: int, b: int):
     return a == -1 or b == -1 or a == b
 
 
-VAL_RATIO = 0.1
-TEST_RATIO = 0.1
-TRAIN_RATIO = 1 - VAL_RATIO - TEST_RATIO
+TEST_RATIO = 0.3
 
 
 class UserSplitter:

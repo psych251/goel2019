@@ -91,8 +91,8 @@ if __name__ == '__main__':
     plt.savefig('average area.pdf')
 
     #%%
-    df = user.unstressed_condition.tasks[0].separated_track_pad_df
-    df2 = df.reset_index(level=0)
-    plt.figure(figsize=(5, 3))
-    sns.scatterplot(x='time', y='x', hue='level_0', data=df2, linewidth=0, alpha=0.7)
-    plt.savefig('test.pdf')
+    # df = user.unstressed_condition.tasks[0].separated_track_pad_df
+    # df2 = df.reset_index(level=0)
+    # plt.figure(figsize=(5, 3))
+    # sns.scatterplot(x='time', y='x', hue='level_0', data=df2, linewidth=0, alpha=0.7)
+    # plt.savefig('test.pdf')

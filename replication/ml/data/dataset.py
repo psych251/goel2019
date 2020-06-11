@@ -35,28 +35,6 @@ class TouchDataset(torch.utils.data.Dataset):
             t += [1.0 if entry.valid else 0.0]
         return x, y, t
 
-    @staticmethod
-    def track_pad_to_list(entries: List[TrackPadEntry]):
-        x = []
-        y = []
-        major = []
-        minor = []
-        valid = []
-        press = [[] for _ in range(8)]
-        for entry in entries:
-            x += [entry.x]
-            y += [entry.y]
-            major += [entry.major_axis]
-            minor += [entry.minor_axis]
-            valid += [entry.valid]
-            for i in range(8):
-                press[i] += [1.0 if entry.pos == i else 0.0]
-        return [x, y, major, minor, valid] + press
-
-    @staticmethod
-    def separated_track_pad_to_list(entries_list: List[List[TrackPadEntry]]):
-        return [TouchDataset.track_pad_to_list(entries) for entries in entries_list]
-
     def __getitem__(self, index):
         found = False
         for user_id, user in enumerate(self.users):
@@ -69,7 +47,7 @@ class TouchDataset(torch.utils.data.Dataset):
                     index -= task_count
             if found:
                 break
-        tensor = torch.Tensor(self.separated_track_pad_to_list(condition.tasks[index].separated_track_pad_entries))
+        tensor = torch.Tensor(condition.tasks[index].data_list)
         return (self.users[user_id].name, condition.tasks[index].per), (label, tensor)
 
     def __len__(self):

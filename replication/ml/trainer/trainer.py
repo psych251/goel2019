@@ -28,13 +28,16 @@ def append_to(array: Optional[np.array], new_array: torch.Tensor):
     else:
         return np.concatenate((array, new_array_np), axis=0)
 
+
 def diff(tensor_a: torch.Tensor, tensor_b: torch.Tensor = None):
     if tensor_b is None:
         tensor_b = tensor_a
     return tensor_a[:, 1:] - tensor_b[:, :-1]
 
+
 def absdiff(tensor_a: torch.Tensor, tensor_b: torch.Tensor = None):
     return torch.abs(diff(tensor_a, tensor_b))
+
 
 def compute_features_reference(input_list: List[torch.Tensor]):
     reference_list = []
@@ -72,11 +75,11 @@ class TouchTrainer:
     def __init__(self, data_splitter: DataSplitter, device, max_step=10000000):
         self.data_splitter = data_splitter
         self.max_step = max_step
-        self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.BCEWithLogitsLoss(reduction='none')
         self.features_criterion = nn.MSELoss()
         self.n_iter = 0
         self.device = device
-        self.user_names = self.data_splitter.user_names
+        self.user_names = sorted(self.data_splitter.user_names)
         self.current_user_id = 0
         self.last_loss = None
         self.save_files = {user_name: {} for user_name in self.user_names}
@@ -98,13 +101,17 @@ class TouchTrainer:
         self.save_files[user_name][self.n_iter] = filepath
         self.save_to(os.path.join(self.output_dir, SAVE_FILE_NAME))
 
-    def load_model(self, user_name: str) -> bool:
-        min_iter = -1
+    def user_iter_path(self, user_name: str):
+        max_iter = -1
         checkpoint_path = None
         for n_iter, iter_checkpoint_path in self.save_files[user_name].items():
-            if n_iter > min_iter:
-                min_iter = n_iter
+            if n_iter > max_iter:
+                max_iter = n_iter
                 checkpoint_path = iter_checkpoint_path
+        return max_iter, checkpoint_path
+
+    def load_model(self, user_name: str) -> bool:
+        _, checkpoint_path = self.user_iter_path(user_name)
         if checkpoint_path is None:
             self.n_iter = 0
             # noinspection PyUnresolvedReferences
@@ -133,7 +140,6 @@ class TouchTrainer:
         }
         with open(file_dir, "wb") as save_file:
             pickle.dump(save_file_content, save_file)
-#   self.save_to(filepath, os.path.join(self.output_dir, SAVE_FILE_NAME))
 
     def load_from(self, file_dir):
         with open(file_dir, "rb") as save_file:
@@ -144,6 +150,12 @@ class TouchTrainer:
         self.save_files = save_file_content["save_files"]
         self.output_dir = save_file_content["output_dir"]
         self.writer_dir = save_file_content["writer_dir"]
+
+        min_iter = min([self.user_iter_path(user_name)[0] for user_name in self.user_names])
+        for user_name, save_file_dict in self.save_files.items():
+            for file_iter in list(save_file_dict.keys()):
+                if file_iter > min_iter:
+                    del self.save_files[user_name][file_iter]
 
     def load_dir(self, file_dir):
         files = os.listdir(file_dir)
@@ -167,35 +179,36 @@ class TouchTrainer:
         reference: torch.Tensor = input_y
         loss = self.criterion(output, reference)
         # noinspection PyUnresolvedReferences
-        correct_rate = ((reference * 2 - 1) * output[:] > 0.5).float().mean()
+        correct_rate = ((reference * 2 - 1) * output[:] > 0).float()
         # noinspection PyArgumentList
         return loss, correct_rate, output, reference
 
-    # def process_input_features(self, input_a: List[torch.Tensor], input_b: List[torch.Tensor]):
-    #     input_a = self.to_device(input_a)
-    #     input_b = self.to_device(input_b)
-    #     output = self.model.forward_features(input_a + input_b)
-    #     reference = self.to_device(compute_features_reference(input_a + input_b))
-    #     cropped_output = [single_output[:, 0: reference[0].shape[1]] for single_output in output]
-    #     loss = self.features_criterion(torch.cat(cropped_output), torch.cat(reference))
-    #     return loss
+    def process_input_features(self, input: List[torch.Tensor]):
+        input = self.to_device(input)
+        output = self.model.forward_features(input)
+        reference = self.to_device(compute_features_reference(input))
+        cropped_output = [single_output[:, 0: reference[0].shape[1]] for single_output in output]
+        loss = self.features_criterion(torch.cat(cropped_output), torch.cat(reference))
+        return loss
 
     def train_iter(self, input_y: List[torch.Tensor], input_x: List[torch.Tensor]):
         self.model.train()
-        loss, correct_rate, _, _ = self.process_input(input_y, input_x)
+        loss_array, correct_rate_array, _, _ = self.process_input(input_y, input_x)
+        loss = loss_array.mean()
+        correct_rate = correct_rate_array.mean()
         self.add_scalar('train/loss', loss.detach().cpu().numpy())
         self.add_scalar('train/rate', correct_rate.detach().cpu().numpy())
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-    # def train_features_iter(self, input_y: List[torch.Tensor], input_y: List[torch.Tensor]):
-    #     self.model.train()
-    #     loss = self.process_input_features(input_a, input_b)
-    #     self.add_scalar('train/features_loss', loss.detach().cpu().numpy())
-    #     self.optimizer.zero_grad()
-    #     loss.backward()
-    #     self.optimizer.step()
+    def train_features_iter(self, input: List[torch.Tensor]):
+        self.model.train()
+        loss = self.process_input_features(input)
+        self.add_scalar('train/features_loss', loss.detach().cpu().numpy())
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
     @staticmethod
     def data_loader_generator(data_loader: DataLoader):
@@ -210,7 +223,7 @@ class TouchTrainer:
 
     # noinspection PyShadowingBuiltins
     def train(self, resume_from: Optional[str]):
-        torch.autograd.set_detect_anomaly(True)
+        # torch.autograd.set_detect_anomaly(True)
 
         output_parent_dir = "./checkpoints"
         if resume_from is None:
@@ -234,6 +247,7 @@ class TouchTrainer:
         while True:
             for self.current_user_id in range(len(self.user_names)):
             # for self.current_user_id in [self.user_names.index('A5')]:
+            # for self.current_user_id in [4]:
                 self.load_model(self.current_user_name)
                 start_iter = self.n_iter
                 print(f"User {self.current_user_name} iter {self.n_iter}-{self.n_iter + USER_ITER}")
@@ -258,6 +272,7 @@ class TouchTrainer:
                                 print(f"Discarded {len(filtered_input)} train data")
                             continue
                         input_y, input_x = zip(*filtered_input)
+                        # self.train_features_iter(input_x)
                         self.train_iter(input_y, input_x)
                         self.n_iter += 1
                         evaluation_done = False
@@ -284,6 +299,7 @@ class TouchTrainer:
     def eval(self, test=False, checkpoint=True):
         self.model.eval()
         loss_array: Optional[List[float]] = None
+        feature_loss_array: Optional[List[float]] = None
         rate_array: Optional[List[float]] = None
         output_array: Optional[List[float]] = None
         reference_array: Optional[List[float]] = None
@@ -301,13 +317,17 @@ class TouchTrainer:
                 continue
             input_y, input_x = zip(*filtered_input)
             loss, correct_rate, output, reference = self.process_input(input_y, input_x)
+            # feature_loss = self.process_input_features(input_x)
             loss_array = append_to(loss_array, loss)
+            # feature_loss_array = append_to(feature_loss_array, feature_loss)
             rate_array = append_to(rate_array, correct_rate)
             output_array = append_to(output_array, output)
             reference_array = append_to(reference_array, reference)
 
         avg_loss = np.average(loss_array)
         self.add_scalar(prefix + 'avg_loss', avg_loss)
+        # avg_feature_loss = np.average(feature_loss_array)
+        # self.add_scalar(prefix + 'avg_feature_loss', avg_feature_loss)
         avg_rate = np.average(rate_array)
         self.add_scalar(prefix + 'avg_rate', avg_rate)
         if checkpoint:

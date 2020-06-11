@@ -3,6 +3,7 @@ import random
 import sys
 import os
 
+import numpy as np
 import torch.utils.data
 from torch.utils.data import DataLoader
 import seaborn as sns
@@ -24,6 +25,8 @@ def process_data(data_model: torch.nn.Module, data_loader: DataLoader, device: t
 
 if __name__ == "__main__":
     random.seed(24)
+    np.random.seed(24)
+    torch.manual_seed(24)
     mode = sys.argv[1]
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cuda:1")
@@ -73,7 +76,7 @@ if __name__ == "__main__":
         import matplotlib.pyplot as plt
 
         df = pandas.DataFrame(data_frame_dict)
-        df.to_csv('output_reference_30.csv')
+        df.to_csv('output_reference_20200526T151100.csv')
         # sns.barplot('user', 'rate', data=df)
         # plt.savefig("user_rate.pdf")
 

@@ -25,6 +25,7 @@ class TaskMoves(Task):
     individual_track_pad_entries: Optional[List[List[TrackPadEntry]]]
     separated_track_pad_entries: Optional[List[List[TrackPadEntry]]]
     cursor_entries: Optional[List[CursorEntry]]
+    data_list: Optional[List[List[List[float]]]]
 
     # noinspection PyMissingConstructor
     def __init__(self, task: Task):
@@ -42,6 +43,31 @@ class TaskMoves(Task):
 
     def populate_track_pad_entries(self, move_file: MovesFile):
         self.track_pad_entries = self.filter_data_entries(move_file.entries, self.start, self.finish)
+
+    @staticmethod
+    def track_pad_to_list(entries: List[TrackPadEntry]):
+        x = []
+        y = []
+        major = []
+        minor = []
+        valid = []
+        press = [[] for _ in range(8)]
+        for entry in entries:
+            x += [entry.x]
+            y += [entry.y]
+            major += [entry.major_axis]
+            minor += [entry.minor_axis]
+            valid += [entry.valid]
+            for i in range(8):
+                press[i] += [1.0 if entry.pos == i else 0.0]
+        return [x, y, major, minor, valid] + press
+
+    @staticmethod
+    def separated_track_pad_to_list(entries_list: List[List[TrackPadEntry]]):
+        return [TaskMoves.track_pad_to_list(entries) for entries in entries_list]
+
+    def populate_data_list(self):
+        self.data_list = self.separated_track_pad_to_list(self.separated_track_pad_entries)
 
     def populate_separated_track_pad_entries(self):
         self.individual_track_pad_entries: List[List[TrackPadEntry]] = []
@@ -201,6 +227,7 @@ class Condition:
             for task in self.tasks:
                 task.populate_track_pad_entries(moves_file)
                 task.populate_separated_track_pad_entries()
+                task.populate_data_list()
                 task.populate_cursor_entries(cursor_file)
         else:
             raise ValueError

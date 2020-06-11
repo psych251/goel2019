@@ -36,7 +36,7 @@ class TouchNet(nn.Module):
         # ]
         summed_output = []
         for output in unpadded_output:
-            weight = f.sigmoid(output[:, range(output.shape[1] // 2), :])
+            weight = torch.sigmoid(output[:, range(output.shape[1] // 2), :])
             value = output[:, range(output.shape[1] // 2, output.shape[1]), :]
             weight_sum = weight.sum(dim=2) + 0.001
             weighted_sum = (value * weight).sum(dim=2)
@@ -47,7 +47,7 @@ class TouchNet(nn.Module):
         unpadded_linear_output = unpad_output_traces(linear_output, trace_counts)
         summed_linear_output = []
         for output in unpadded_linear_output:
-            weight = f.sigmoid(output[:, 0])
+            weight = torch.sigmoid(output[:, 0])
             value = output[:, 1]
             weight_sum = weight.sum() + 0.001
             weighted_sum = (value * weight).sum()
@@ -88,5 +88,31 @@ class TouchNet(nn.Module):
         # noinspection PyUnresolvedReferences
         output_length = self.input_network.process_lengths(input_lengths)
         unpadded_output = unpad_output(cnn_output, trace_counts, output_length)
-        summed_output = [output.mean(dim=2) for output in unpadded_output]
+        # summed_output = [
+        #     (output[:, :, range(output.shape[2] / 2)] *
+        #     output[:, :, output.shape[2] / 2 + range(output.shape[2] / 2)]).sum(dim=2) /
+        #     output[:, :, range(output.shape[2] / 2)].sum(dim=2)
+        #     for output in unpadded_output
+        # ]
+        summed_output = []
+        for output in unpadded_output:
+            weight = torch.sigmoid(output[:, range(output.shape[1] // 2), :])
+            value = output[:, range(output.shape[1] // 2, output.shape[1]), :]
+            weight_sum = weight.sum(dim=2) + 0.001
+            weighted_sum = (value * weight).sum(dim=2)
+            weighted_mean = weighted_sum / weight_sum
+            summed_output += [weighted_mean]
+        # linear_input = torch.cat(summed_output)
+        # linear_output = self.linear(linear_input)
+        # unpadded_linear_output = unpad_output_traces(linear_output, trace_counts)
+        # unpadded_summed_output = unpad_output_traces(linear_input, trace_counts)
+        # summed_linear_output = []
+        # for linear, output in zip(unpadded_linear_output, unpadded_summed_output):
+        #     weight = torch.sigmoid(linear[:, 1])
+        #     value = output
+        #     weight_sum = weight.sum(dim=0) + 0.001
+        #     weighted_sum = (value.T * weight).T.sum(dim=0)
+        #     weighted_mean = weighted_sum / weight_sum
+        #     summed_linear_output += [weighted_mean]
+        # final_output = torch.stack(summed_linear_output)
         return summed_output

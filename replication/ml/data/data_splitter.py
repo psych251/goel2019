@@ -46,8 +46,8 @@ class DataSplitter:
             train_user.name = user.name
             val_user.name = user.name
 
-            stressed_tasks = user.stressed_condition.tasks
-            random.shuffle(stressed_tasks)
+            stressed_tasks = copy.copy(user.stressed_condition.tasks)
+            # random.shuffle(stressed_tasks)
             stressed_train = len(stressed_tasks) * TRAIN_RATIO
             train_threshold = int(stressed_train)
             stressed_val = len(stressed_tasks) * VAL_RATIO
@@ -57,8 +57,8 @@ class DataSplitter:
             val_user.stressed_condition.tasks = \
                 stressed_tasks[train_threshold: val_threshold]
 
-            unstressed_tasks = user.unstressed_condition.tasks
-            random.shuffle(unstressed_tasks)
+            unstressed_tasks = copy.copy(user.unstressed_condition.tasks)
+            # random.shuffle(unstressed_tasks)
             unstressed_train = len(unstressed_tasks) * TRAIN_RATIO
             train_threshold = int(unstressed_train)
             unstressed_val = len(unstressed_tasks) * VAL_RATIO

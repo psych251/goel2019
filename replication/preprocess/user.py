@@ -83,7 +83,7 @@ class User:
             self.stressed_condition = Condition(os.path.join(file_prefix, STRESSED_PREFIX))
             self.unstressed_condition = Condition(os.path.join(file_prefix, UNSTRESSED_PREFIX))
             self.name = name
-            self.normalize_data()
+            # self.normalize_data()
         else:
             raise ValueError
 
