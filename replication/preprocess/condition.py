@@ -45,6 +45,16 @@ class TaskMoves(Task):
         self.track_pad_entries = self.filter_data_entries(move_file.entries, self.start, self.finish)
 
     @staticmethod
+    def zero_track_pad_entries(entries: List[TrackPadEntry]):
+        x_start = entries[0].x
+        y_start = entries[0].y
+        new_entries = copy.deepcopy(entries)
+        for entry in new_entries:
+            entry.x -= x_start
+            entry.y -= y_start
+        return new_entries
+
+    @staticmethod
     def track_pad_to_list(entries: List[TrackPadEntry]):
         x = []
         y = []
@@ -87,7 +97,7 @@ class TaskMoves(Task):
             entered = False
             for history_entries in separated_track_pad_entries_un_padded:
                 if individual_entries[0].time - history_entries[-1].time > SAMPLE_INTERVAL:
-                    history_entries += individual_entries
+                    history_entries += self.zero_track_pad_entries(individual_entries)
                     entered = True
                     break
             if entered:
